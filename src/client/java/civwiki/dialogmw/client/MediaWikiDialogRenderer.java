@@ -227,7 +227,7 @@ public final class MediaWikiDialogRenderer {
 			return renderButtons(multi.actions().stream()
 				.map(MediaWikiDialogRenderer::renderActionButton)
 				.filter(s -> !s.isEmpty())
-				.collect(Collectors.toList()));
+				.collect(Collectors.toList()), multi.columns());
 		}
 		if (dialog instanceof DialogListDialog list) {
 			List<String> buttons = new java.util.ArrayList<>();
@@ -244,7 +244,7 @@ public final class MediaWikiDialogRenderer {
 					+ (list.buttonWidth() > 0 ? "|width=" + list.buttonWidth() : "")
 					+ "}}");
 			}
-			return renderButtons(buttons);
+			return renderButtons(buttons, list.columns());
 		}
 		if (dialog instanceof ServerLinksDialog serverLinks) {
 			List<String> buttons = new java.util.ArrayList<>();
@@ -255,16 +255,16 @@ public final class MediaWikiDialogRenderer {
 					+ (serverLinks.buttonWidth() > 0 ? "|width=" + serverLinks.buttonWidth() : "")
 					+ "}}");
 			}
-			return renderButtons(buttons);
+			return renderButtons(buttons, serverLinks.columns());
 		}
 		return "";
 	}
 
-	private static String renderButtons(List<String> buttons) {
+	private static String renderButtons(List<String> buttons, int columns) {
 		if (buttons.isEmpty()) {
 			return "";
 		}
-		return "{{MC dialog/actions|" + String.join(" ", buttons) + "}}";
+		return "{{MC dialog/actions|columns=" + columns + "|" + String.join(" ", buttons) + "}}";
 	}
 
 	// ---------------------------------------------------------------- footer

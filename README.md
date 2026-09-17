@@ -44,6 +44,11 @@ Fabric API dependency.
   | `dialog_list`            | content = one button per sub-dialog, footer = Back      |
   | `server_links`           | content = one button per server link, footer = Back     |
 
+  Action grids are emitted as `{{MC dialog/actions|columns=N|…}}` where `N` is
+  the dialog's in-game `columns` setting, so buttons stack exactly like they do
+  on screen (columns=1 = one per row; the wiki's `Module:MC dialog#grid` centers
+  a leftover partial row, mirroring the generator's ColumnsGrid).
+
   Every dialog gets `|warning = 1` because the "!" button is always present
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
   (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks),
@@ -64,7 +69,9 @@ clicked, **Copy to MediaWiki Template** was pressed, and the clipboard contained
 
 A standalone smoke test of the renderer (`ComponentFormatting` +
 `MediaWikiDialogRenderer`) against all dialog types produced output matching the
-`sandbox_test.wikitext` examples from the template package.
+`sandbox_test.wikitext` examples from the template package, including
+`{{MC dialog/actions|columns=N|…}}` grids that mirror each dialog's in-game
+button layout.
 
 ## Files
 
