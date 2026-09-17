@@ -1,0 +1,14 @@
+# Gradle / Loom
+build/
+.gradle/
+run/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store

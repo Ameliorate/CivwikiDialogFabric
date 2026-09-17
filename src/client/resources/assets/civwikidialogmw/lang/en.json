@@ -1,0 +1,7 @@
+{
+	"civwikidialogmw.copy_to_mediawiki": "Copy to MediaWiki Template",
+	"civwikidialogmw.copied_title": "Copied to MediaWiki Template",
+	"civwikidialogmw.copied_message": "The dialog's wikitext is on your clipboard. Paste it into a wiki page!",
+	"civwikidialogmw.copy_failed_title": "Copy to MediaWiki Template failed",
+	"civwikidialogmw.copy_failed_message": "See the client log for details: %s"
+}

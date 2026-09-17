@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "civwikidialogmw",
+	"version": "${version}",
+	"name": "MC Dialog -> MediaWiki Template",
+	"description": "Adds a 'Copy to MediaWiki Template' option to the dialog debug (warning) screen, generating {{MC dialog|...}} wikitext from the dialog currently on screen. Companion to the civwiki \"Template:MC dialog\" set.",
+	"authors": [
+		"Fluffums The Goose"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"civwiki.dialogmw.client.CivWikiDialogMwClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "civwikidialogmw.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.1.2",
+		"java": ">=25"
+	}
+}

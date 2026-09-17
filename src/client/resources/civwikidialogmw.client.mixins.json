@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "civwiki.dialogmw.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"DialogScreenMixin",
+		"WarningScreenMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
