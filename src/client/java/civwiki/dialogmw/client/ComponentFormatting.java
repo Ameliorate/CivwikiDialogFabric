@@ -81,6 +81,9 @@ public final class ComponentFormatting {
 		Map.entry(0xFFFFFF, 'f')
 	);
 
+	/** The glyph object (sprite/head) contents flatten to in plain text (U+FFFC). */
+	private static final String OBJECT_PLACEHOLDER = "\uFFFC";
+
 	private ComponentFormatting() {
 	}
 
@@ -288,7 +291,10 @@ public final class ComponentFormatting {
 		StringBuilder out = new StringBuilder();
 		for (Component node : component.toFlatList()) {
 			String text = node.getString();
-			if (text.isEmpty()) {
+			if (text.isEmpty() || text.equals(OBJECT_PLACEHOLDER)) {
+				// Object (sprite/head) contents flatten to the U+FFFC placeholder
+				// glyph; wiki templates cannot live inside attribute values, so
+				// there is simply nothing to copy for them here.
 				continue;
 			}
 			String codes = legacyCodes(node.getStyle());

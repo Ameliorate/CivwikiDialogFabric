@@ -69,7 +69,9 @@ Fabric API dependency.
   Object components in text become raw wiki template calls: atlas sprites as
   `{{ItemSprite|item-id}}` (e.g. `{{ItemSprite|iron-helmet}}`), player heads as
   `{{playericon|PlayerName}}`, and nameless material-placeholder heads
-  (MaterialSpritesGenerator-style) as `{{ItemSprite|player-head}}`. Sprites
+  (MaterialSpritesGenerator-style) as `{{ItemSprite|player-head}}`. Object
+  contents inside tooltips are dropped entirely (templates cannot live inside
+  attribute values), so no placeholder glyph is copied there. Sprites
   outside `minecraft:item/` and `minecraft:block/` are resolved through the
   bundled MaterialSprites inverse mapping (derived from the
   MaterialSpritesGenerator 1.21.11 release) to recover the original item id.
