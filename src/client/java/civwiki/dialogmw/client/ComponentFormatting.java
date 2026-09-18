@@ -191,7 +191,7 @@ public final class ComponentFormatting {
 	 */
 	private static String objectWikiCall(ObjectInfo info) {
 		if (info instanceof AtlasSprite sprite) {
-			return "{{ItemSprite|" + itemSpriteName(sprite.sprite()) + "}}";
+			return "{{ItemSprite|" + atlasSpriteItemId(sprite.sprite()) + "}}";
 		}
 		if (info instanceof PlayerSprite player) {
 			Optional<String> name = player.player().name();
@@ -201,6 +201,23 @@ public final class ComponentFormatting {
 			return "{{ItemSprite|player-head}}";
 		}
 		return "";
+	}
+
+	/**
+	 * Item id (wiki form) for an atlas sprite. {@code minecraft:item/...} and
+	 * {@code minecraft:block/...} sprites map straight from their path; anything
+	 * else (banner map decorations, the shield slot icon, particle and
+	 * decorated-pot sprites, custom atlases) is looked up in the
+	 * MaterialSpritesGenerator mapping, falling back to the dashed path when
+	 * the sprite is not a known material sprite.
+	 */
+	private static String atlasSpriteItemId(Identifier sprite) {
+		String path = sprite.getPath();
+		if (path.startsWith("item/") || path.startsWith("block/")) {
+			return itemSpriteName(sprite);
+		}
+		String material = MaterialSprites.itemId(sprite.toString());
+		return material != null ? material : itemSpriteName(sprite);
 	}
 
 	/** {@code minecraft:item/iron_helmet} -> {@code iron-helmet} (wiki ItemSprite id). */

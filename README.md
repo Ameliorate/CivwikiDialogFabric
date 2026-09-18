@@ -69,7 +69,10 @@ Fabric API dependency.
   Object components in text become raw wiki template calls: atlas sprites as
   `{{ItemSprite|item-id}}` (e.g. `{{ItemSprite|iron-helmet}}`), player heads as
   `{{playericon|PlayerName}}`, and nameless material-placeholder heads
-  (MaterialSpritesGenerator-style) as `{{ItemSprite|player-head}}`.
+  (MaterialSpritesGenerator-style) as `{{ItemSprite|player-head}}`. Sprites
+  outside `minecraft:item/` and `minecraft:block/` are resolved through the
+  bundled MaterialSprites inverse mapping (derived from the
+  MaterialSpritesGenerator 1.21.11 release) to recover the original item id.
   Message bodies whose in-game text uses `space.N` translatable spacing
   components get those components stripped and are emitted with `align=left`
   (they are structured lists, not centered blurbs).
