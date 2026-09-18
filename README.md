@@ -18,7 +18,7 @@ the warning screen with the extra button.
 ./gradlew build
 ```
 
-Produces `build/libs/civwikidialogmw-1.0.0.jar`. Drops the jar into your
+Produces `build/libs/civwikidialogmw-1.3.0.jar`. Drops the jar into your
 `mods/` folder (Fabric Loader >= 0.19.5, Java 25+, Minecraft 26.1.x). No
 Fabric API dependency.
 
@@ -65,9 +65,14 @@ Fabric API dependency.
   Every dialog gets `|warning = 1` because the "!" button is always present
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
   (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks,
-  literal slashes escaped as `\/`), colors (`{{MC dialog/text|...}}` for the 16 classic named colors) and widths are
-  carried over; the generated lines never start with a space, so MediaWiki won't
-  render `<pre>` blocks (no dependency on the package's Lua `strip` helper).
+  literal slashes escaped as `\/`), colors and widths are carried over.
+  Styled text runs are emitted as `{{MC dialog/text|...}}`; when a run's style
+  carries a SHOW_TEXT hover event, its hover text becomes the same
+  `|tooltip=` / `|tooltip_desc=` parameters the wiki's `/text` template now
+  renders (mouse-following minetip, identical to button tooltips) — so text
+  that shows a tooltip in-game shows one on the wiki too. The generated lines
+  never start with a space, so MediaWiki won't render `<pre>` blocks (no
+  dependency on the package's Lua `strip` helper).
 - Clipboard: `ClipboardManager.setClipboard(window, ...)` — the same API the game
   uses for its own copy-to-clipboard action.
 

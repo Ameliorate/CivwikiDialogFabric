@@ -1,8 +1,10 @@
 package civwiki.dialogmw.client;
 
 import java.util.Map;
+import java.util.Optional;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 
@@ -80,7 +82,10 @@ public final class ComponentFormatting {
 	/**
 	 * Renders a component as inline wikitext. Plain runs become literal text,
 	 * styled runs are wrapped in {@code {{MC dialog/text|...}}}; every run goes
-	 * through {@link #wikiParam} so it stays exactly as authored.
+	 * through {@link #wikiParam} so it stays exactly as authored. Runs whose
+	 * style carries a SHOW_TEXT hover event get their hover text appended as
+	 * {@code |tooltip=} / {@code |tooltip_desc=} parameters (the same minetip
+	 * contract as button tooltips).
 	 */
 	public static String toWikitext(Component component) {
 		if (component == null) {
@@ -98,7 +103,8 @@ public final class ComponentFormatting {
 			boolean italic = style.isItalic();
 			boolean underlined = style.isUnderlined();
 			boolean strikethrough = style.isStrikethrough();
-			if (color == null && !bold && !italic && !underlined && !strikethrough) {
+			Optional<Component> hover = hoverText(style);
+			if (color == null && !bold && !italic && !underlined && !strikethrough && hover.isEmpty()) {
 				out.append(text);
 				continue;
 			}
@@ -118,9 +124,67 @@ public final class ComponentFormatting {
 			if (strikethrough) {
 				out.append("strikethrough=yes|");
 			}
+			boolean tipEmitted = false;
+			if (hover.isPresent()) {
+				String tip = ComponentFormatting.tooltipParams(hover.get());
+				if (tip != null) {
+					out.append(tip);
+					tipEmitted = true;
+				}
+			}
+			// The style block (or the template's opening pipe) always leaves a
+			// separator behind; a tooltip fragment does not, so restore one.
+			if (tipEmitted) {
+				out.append('|');
+			}
 			out.append("1=").append(text).append("}}");
 		}
 		return out.toString();
+	}
+
+	/** The SHOW_TEXT hover component carried by a style, if any. */
+	private static Optional<Component> hoverText(Style style) {
+		HoverEvent hover = style.getHoverEvent();
+		if (hover instanceof HoverEvent.ShowText showText) {
+			return Optional.ofNullable(showText.value());
+		}
+		return Optional.empty();
+	}
+
+	/**
+	 * Builds the {@code tooltip=} / {@code tooltip_desc=} parameter fragment
+	 * (without surrounding pipes) for a hover component (a {@code SHOW_TEXT}
+	 * hover event), returning {@code null} when there is nothing to show. The
+	 * first line becomes the main tooltip text; the rest are joined with the
+	 * wiki's {@code /} description separator, exactly like button tooltips.
+	 * Callers add their own {@code |} separators, so the fragment is safe to
+	 * splice into any parameter position.
+	 */
+	public static String tooltipParams(Component tooltip) {
+		if (tooltip == null) {
+			return null;
+		}
+		String[] lines = splitTooltipLines(tooltip);
+		StringBuilder out = new StringBuilder();
+		if (lines.length > 0 && !lines[0].isEmpty()) {
+			out.append("tooltip=").append(tooltipParam(lines[0]));
+		}
+		if (lines.length > 1) {
+			StringBuilder rest = new StringBuilder();
+			for (int i = 1; i < lines.length; i++) {
+				if (i > 1) {
+					rest.append('/');
+				}
+				rest.append(tooltipDescParam(lines[i]));
+			}
+			if (!rest.isEmpty()) {
+				if (!out.isEmpty()) {
+					out.append('|');
+				}
+				out.append("tooltip_desc=").append(rest);
+			}
+		}
+		return out.isEmpty() ? null : out.toString();
 	}
 
 	/**

@@ -297,21 +297,9 @@ public final class MediaWikiDialogRenderer {
 		StringBuilder sb = new StringBuilder("{{MC dialog/button|label=");
 		sb.append(ComponentFormatting.toWikitext(data.label()));
 		data.tooltip().ifPresent(tooltip -> {
-			String[] lines = ComponentFormatting.splitTooltipLines(tooltip);
-			if (lines.length > 0 && !lines[0].isEmpty()) {
-				sb.append("|tooltip=").append(ComponentFormatting.tooltipParam(lines[0]));
-			}
-			if (lines.length > 1) {
-				StringBuilder rest = new StringBuilder();
-				for (int i = 1; i < lines.length; i++) {
-					if (i > 1) {
-						rest.append('/');
-					}
-					rest.append(ComponentFormatting.tooltipDescParam(lines[i]));
-				}
-				if (!rest.isEmpty()) {
-					sb.append("|tooltip_desc=").append(rest);
-				}
+			String tip = ComponentFormatting.tooltipParams(tooltip);
+			if (tip != null) {
+				sb.append('|').append(tip);
 			}
 		});
 		if (data.width() > 0) {
