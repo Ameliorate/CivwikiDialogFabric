@@ -251,7 +251,7 @@ public final class MediaWikiDialogRenderer {
 			for (ServerLinks.Entry entry : connectionAccess.serverLinks().entries()) {
 				buttons.add("{{MC dialog/button|label="
 					+ ComponentFormatting.toWikitext(entry.displayName())
-					+ "|tooltip=" + ComponentFormatting.tooltipParam(entry.link().toString())
+					+ "|tooltip=" + ComponentFormatting.rawTooltipParam(entry.link().toString())
 					+ (serverLinks.buttonWidth() > 0 ? "|width=" + serverLinks.buttonWidth() : "")
 					+ "}}");
 			}

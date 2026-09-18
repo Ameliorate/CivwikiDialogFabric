@@ -21,11 +21,13 @@ import net.minecraft.network.chat.TextColor;
  *       survive argument trimming and decode to spaces in the rendered HTML. Text that
  *       itself contains a nowiki marker (it would terminate the block early) falls back
  *       to per-character entity escaping, which is equally literal.</li>
- *   <li><b>legacy tooltip</b> ({@link #tooltipParam}) -- for button/choice tooltips
- *       (the {@code &0}-{@code &f} codes the minetip script renders). These live inside
- *       HTML attributes, so they are never nowiki-wrapped (the tags would not be stripped
- *       there); ampersands are escaped as {@code \&} (minetip's literal-ampersand
- *       convention), pipes as {@code {{!}}}, and edge spaces again as {@code &#32;}.</li>
+ *   <li><b>legacy tooltip</b> ({@link #toTooltip}/{@link #tooltipParam}) -- for button/choice
+ *       tooltips (the {@code &0}-{@code &f} codes the minetip script renders). These live
+ *       inside HTML attributes, so they are never nowiki-wrapped (the tags would not be
+ *       stripped there); style codes are emitted verbatim so minetip applies them, while
+ *       literal ampersands in the text are escaped as {@code \&} (minetip's
+ *       literal-ampersand convention), backslashes as {@code \\}, pipes as {@code {{!}}},
+ *       and edge spaces again as {@code &#32;}.</li>
  * </ul>
  */
 public final class ComponentFormatting {
@@ -121,9 +123,12 @@ public final class ComponentFormatting {
 
 	/**
 	 * Renders a component as a raw legacy-format string (colors/bold/... as {@code &x}
-	 * codes, newlines preserved) <em>without</em> parameter escaping. Callers split it
-	 * into lines and run each through {@link #tooltipParam} before inserting it into a
-	 * template argument.
+	 * codes, newlines preserved), with each text run already escaped for minetip
+	 * (literal {@code &} as {@code \&}, {@code \} as {@code \\}, {@code |} as
+	 * {@code {{!}}}). Callers split it into lines and run each through {@link #tooltipParam}
+	 * before inserting it into a template argument. The codes are emitted verbatim
+	 * <em>after</em> the per-run escaping, so they stay {@code &x} instead of being
+	 * mangled into {@code \&x} (which minetip would render as literal text).
 	 */
 	public static String toTooltip(Component component) {
 		if (component == null) {
@@ -137,9 +142,9 @@ public final class ComponentFormatting {
 			}
 			String codes = legacyCodes(node.getStyle());
 			if (codes.isEmpty()) {
-				out.append(text);
+				out.append(escapeTooltip(text));
 			} else {
-				out.append(codes).append(text).append("&r");
+				out.append(codes).append(escapeTooltip(text)).append("&r");
 			}
 		}
 		return out.toString();
@@ -154,30 +159,46 @@ public final class ComponentFormatting {
 	}
 
 	/**
-	 * Escapes a single tooltip line for use as a template parameter value:
-	 * edge whitespace becomes {@code &#32;}-style entities (argument trimming would
-	 * otherwise eat it), ampersands become the minetip literal {@code \&}, pipes
-	 * become {@code {{!}}} so they cannot split the parameter.
+	 * Formats an already-escaped tooltip line as a template parameter value.
+	 * The line must already be in minetip form (as produced by {@link #toTooltip} or
+	 * {@link #rawTooltipParam}): color/format codes as {@code &x}, literal ampersands
+	 * as {@code \\&}, backslashes as {@code \\\\}, pipes as {@code {{!}}}. This step only
+	 * re-emits edge whitespace as {@code &#32;}-style entities (argument trimming would
+	 * otherwise eat it); the body is passed through verbatim, because re-escaping the
+	 * ampersands would turn the {@code &x} color codes into {@code \\&x} literal text
+	 * and double-escape the {@code \\&}/{@code \\\\} sequences.
 	 */
-	public static String tooltipParam(String text) {
-		if (text == null || text.isEmpty()) {
+	public static String tooltipParam(String escapedLine) {
+		if (escapedLine == null || escapedLine.isEmpty()) {
 			return "";
 		}
 		int start = 0;
-		int end = text.length();
-		while (start < end && isEdgeWhitespace(text.charAt(start))) {
+		int end = escapedLine.length();
+		while (start < end && isEdgeWhitespace(escapedLine.charAt(start))) {
 			start++;
 		}
-		while (end > start && isEdgeWhitespace(text.charAt(end - 1))) {
+		while (end > start && isEdgeWhitespace(escapedLine.charAt(end - 1))) {
 			end--;
 		}
 		StringBuilder out = new StringBuilder();
-		appendEdgeWhitespace(out, text, 0, start);
+		appendEdgeWhitespace(out, escapedLine, 0, start);
 		if (end > start) {
-			out.append(escapeTooltip(text.substring(start, end)));
+			out.append(escapedLine, start, end);
 		}
-		appendEdgeWhitespace(out, text, end, text.length());
+		appendEdgeWhitespace(out, escapedLine, end, escapedLine.length());
 		return out.toString();
+	}
+
+	/**
+	 * Escapes a raw string (not a {@link Component}, e.g. a server-link URL) into a
+	 * minetip tooltip line and formats it as a template parameter value: identical to
+	 * {@link #tooltipParam} but with {@link #escapeTooltip} applied to the body first.
+	 */
+	public static String rawTooltipParam(String rawText) {
+		if (rawText == null || rawText.isEmpty()) {
+			return "";
+		}
+		return tooltipParam(escapeTooltip(rawText));
 	}
 
 	/**
@@ -229,7 +250,7 @@ public final class ComponentFormatting {
 		}
 	}
 
-	/** Escapes a tooltip fragment for the minetip format: {@code \&} literal amp, {@code {{!}}} pipe. */
+	/** Escapes literal text for the minetip format: {@code \\} literal backslash, {@code \&} literal amp, {@code {{!}}} pipe. */
 	private static String escapeTooltip(String text) {
 		return text
 			.replace("\\", "\\\\")
