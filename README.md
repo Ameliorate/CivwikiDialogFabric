@@ -64,8 +64,8 @@ Fabric API dependency.
 
   Every dialog gets `|warning = 1` because the "!" button is always present
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
-  (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks),
-  colors (`{{MC dialog/text|...}}` for the 16 classic named colors) and widths are
+  (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks,
+  literal slashes escaped as `\/`), colors (`{{MC dialog/text|...}}` for the 16 classic named colors) and widths are
   carried over; the generated lines never start with a space, so MediaWiki won't
   render `<pre>` blocks (no dependency on the package's Lua `strip` helper).
 - Clipboard: `ClipboardManager.setClipboard(window, ...)` — the same API the game

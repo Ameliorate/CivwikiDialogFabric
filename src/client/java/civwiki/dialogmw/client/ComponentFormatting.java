@@ -27,7 +27,9 @@ import net.minecraft.network.chat.TextColor;
  *       stripped there); style codes are emitted verbatim so minetip applies them, while
  *       literal ampersands in the text are escaped as {@code \&} (minetip's
  *       literal-ampersand convention), backslashes as {@code \\}, pipes as {@code {{!}}},
- *       and edge spaces again as {@code &#32;}.</li>
+ *       literal {@code /} as {@code \/} on description lines (minetip turns a plain
+ *       {@code /} in the description into a line break), and edge spaces again as
+ *       {@code &#32;}.</li>
  * </ul>
  */
 public final class ComponentFormatting {
@@ -207,6 +209,20 @@ public final class ComponentFormatting {
 		}
 		appendEdgeWhitespace(out, escapedLine, end, escapedLine.length());
 		return out.toString();
+	}
+
+	/**
+	 * Formats an already-escaped tooltip <em>description</em> line as a template
+	 * parameter value. Same as {@link #tooltipParam}, but literal {@code /} characters
+	 * are additionally escaped as {@code \/}: the wiki's minetip script renders every
+	 * {@code /} inside {@code |tooltip_desc=} as a line break, so a slash that is part of
+	 * the tooltip text (e.g. "5/10") would otherwise split the description into extra
+	 * lines. Only description lines (the ones joined with {@code /}) go through this;
+	 * in the first line ({@code |tooltip=}) a {@code /} is already plain text, and
+	 * escaping it would show a stray backslash.
+	 */
+	public static String tooltipDescParam(String escapedLine) {
+		return tooltipParam(escapedLine).replace("/", "\\/");
 	}
 
 	/**

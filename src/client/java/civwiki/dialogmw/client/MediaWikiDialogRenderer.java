@@ -307,7 +307,7 @@ public final class MediaWikiDialogRenderer {
 					if (i > 1) {
 						rest.append('/');
 					}
-					rest.append(ComponentFormatting.tooltipParam(lines[i]));
+					rest.append(ComponentFormatting.tooltipDescParam(lines[i]));
 				}
 				if (!rest.isEmpty()) {
 					sb.append("|tooltip_desc=").append(rest);
