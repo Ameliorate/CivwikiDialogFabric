@@ -18,7 +18,7 @@ the warning screen with the extra button.
 ./gradlew build
 ```
 
-Produces `build/libs/civwikidialogmw-1.3.0.jar`. Drops the jar into your
+Produces `build/libs/civwikidialogmw-1.4.0.jar`. Drops the jar into your
 `mods/` folder (Fabric Loader >= 0.19.5, Java 25+, Minecraft 26.1.x). No
 Fabric API dependency.
 
