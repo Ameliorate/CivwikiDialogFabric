@@ -200,7 +200,7 @@ public final class MediaWikiDialogRenderer {
 			StringBuilder sb = new StringBuilder("{{MC dialog/field|label=");
 			sb.append(ComponentFormatting.toWikitext(field.label()));
 			if (!field.initial().isEmpty()) {
-				sb.append("|1=").append(ComponentFormatting.escapeWikitext(field.initial()));
+				sb.append("|1=").append(ComponentFormatting.wikiParam(field.initial()));
 			}
 			Optional<TextInput.MultilineOptions> multiline = field.multiline();
 			if (multiline.isPresent()) {
@@ -251,7 +251,7 @@ public final class MediaWikiDialogRenderer {
 			for (ServerLinks.Entry entry : connectionAccess.serverLinks().entries()) {
 				buttons.add("{{MC dialog/button|label="
 					+ ComponentFormatting.toWikitext(entry.displayName())
-					+ "|tooltip=" + ComponentFormatting.escapeTooltip(entry.link().toString())
+					+ "|tooltip=" + ComponentFormatting.tooltipParam(entry.link().toString())
 					+ (serverLinks.buttonWidth() > 0 ? "|width=" + serverLinks.buttonWidth() : "")
 					+ "}}");
 			}
@@ -299,7 +299,7 @@ public final class MediaWikiDialogRenderer {
 		data.tooltip().ifPresent(tooltip -> {
 			String[] lines = ComponentFormatting.splitTooltipLines(tooltip);
 			if (lines.length > 0 && !lines[0].isEmpty()) {
-				sb.append("|tooltip=").append(lines[0]);
+				sb.append("|tooltip=").append(ComponentFormatting.tooltipParam(lines[0]));
 			}
 			if (lines.length > 1) {
 				StringBuilder rest = new StringBuilder();
@@ -307,7 +307,7 @@ public final class MediaWikiDialogRenderer {
 					if (i > 1) {
 						rest.append('/');
 					}
-					rest.append(lines[i]);
+					rest.append(ComponentFormatting.tooltipParam(lines[i]));
 				}
 				if (!rest.isEmpty()) {
 					sb.append("|tooltip_desc=").append(rest);

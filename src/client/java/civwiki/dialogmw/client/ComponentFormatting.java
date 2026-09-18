@@ -7,16 +7,25 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 
 /**
- * Helpers for turning in-game {@link Component}s into the two text flavours the
- * wiki templates understand:
+ * Helpers for turning in-game {@link Component}s into the text flavours the wiki
+ * templates understand.
  *
  * <ul>
- *   <li><b>wikitext</b> -- for titles, messages and labels. Styled substrings become
- *       {@code {{MC dialog/text|color=...|bold=yes|1=...}}} invocations, everything is
- *       HTML-entity escaped for safe MediaWiki parameter values.</li>
- *   <li><b>legacy tooltip</b> -- for button/choice tooltips (the {@code &0}-{@code &f}
- *       codes the minetip script renders), with {@code \&} escaped ampersands and
- *       {@code /} line breaks in the description part.</li>
+ *   <li><b>wikitext text</b> ({@link #wikiParam}) -- for titles, messages and labels.
+ *       The body is wrapped in {@code <nowiki>...</nowiki>} so anything the game text
+ *       happens to contain -- {@code [[…]]}, {@code {{…}}}, pipes, line-start bullets,
+ *       headings, italics … -- renders literally instead of being interpreted as wiki
+ *       syntax. MediaWiki trims whitespace at the very edges of template arguments
+ *       before any template sees it (trailing space is eaten, e.g. "Help: " -> "Help:"),
+ *       so any leading/trailing spaces are re-emitted as {@code &#32;} entities, which
+ *       survive argument trimming and decode to spaces in the rendered HTML. Text that
+ *       itself contains a nowiki marker (it would terminate the block early) falls back
+ *       to per-character entity escaping, which is equally literal.</li>
+ *   <li><b>legacy tooltip</b> ({@link #tooltipParam}) -- for button/choice tooltips
+ *       (the {@code &0}-{@code &f} codes the minetip script renders). These live inside
+ *       HTML attributes, so they are never nowiki-wrapped (the tags would not be stripped
+ *       there); ampersands are escaped as {@code \&} (minetip's literal-ampersand
+ *       convention), pipes as {@code {{!}}}, and edge spaces again as {@code &#32;}.</li>
  * </ul>
  */
 public final class ComponentFormatting {
@@ -65,8 +74,9 @@ public final class ComponentFormatting {
 	}
 
 	/**
-	 * Renders a component as inline wikitext. Plain runs are emitted as-is (escaped),
-	 * styled runs are wrapped in {@code {{MC dialog/text|...}}}.
+	 * Renders a component as inline wikitext. Plain runs become literal text,
+	 * styled runs are wrapped in {@code {{MC dialog/text|...}}}; every run goes
+	 * through {@link #wikiParam} so it stays exactly as authored.
 	 */
 	public static String toWikitext(Component component) {
 		if (component == null) {
@@ -74,7 +84,7 @@ public final class ComponentFormatting {
 		}
 		StringBuilder out = new StringBuilder();
 		for (Component node : component.toFlatList()) {
-			String text = escapeWikitext(node.getString());
+			String text = wikiParam(node.getString());
 			if (text.isEmpty()) {
 				continue;
 			}
@@ -110,9 +120,10 @@ public final class ComponentFormatting {
 	}
 
 	/**
-	 * Renders a component as a single-line legacy-format string (for minetip tooltips).
-	 * Named colors become {@code &x} codes; a custom hex color cannot be expressed in
-	 * the legacy format and is dropped for that run.
+	 * Renders a component as a raw legacy-format string (colors/bold/... as {@code &x}
+	 * codes, newlines preserved) <em>without</em> parameter escaping. Callers split it
+	 * into lines and run each through {@link #tooltipParam} before inserting it into a
+	 * template argument.
 	 */
 	public static String toTooltip(Component component) {
 		if (component == null) {
@@ -120,7 +131,7 @@ public final class ComponentFormatting {
 		}
 		StringBuilder out = new StringBuilder();
 		for (Component node : component.toFlatList()) {
-			String text = escapeTooltip(node.getString());
+			String text = node.getString();
 			if (text.isEmpty()) {
 				continue;
 			}
@@ -140,6 +151,120 @@ public final class ComponentFormatting {
 	 */
 	public static String[] splitTooltipLines(Component component) {
 		return toTooltip(component).split("\n", -1);
+	}
+
+	/**
+	 * Escapes a single tooltip line for use as a template parameter value:
+	 * edge whitespace becomes {@code &#32;}-style entities (argument trimming would
+	 * otherwise eat it), ampersands become the minetip literal {@code \&}, pipes
+	 * become {@code {{!}}} so they cannot split the parameter.
+	 */
+	public static String tooltipParam(String text) {
+		if (text == null || text.isEmpty()) {
+			return "";
+		}
+		int start = 0;
+		int end = text.length();
+		while (start < end && isEdgeWhitespace(text.charAt(start))) {
+			start++;
+		}
+		while (end > start && isEdgeWhitespace(text.charAt(end - 1))) {
+			end--;
+		}
+		StringBuilder out = new StringBuilder();
+		appendEdgeWhitespace(out, text, 0, start);
+		if (end > start) {
+			out.append(escapeTooltip(text.substring(start, end)));
+		}
+		appendEdgeWhitespace(out, text, end, text.length());
+		return out.toString();
+	}
+
+	/**
+	 * Escapes a text run for use inside a template parameter value (title, message,
+	 * label, styled-text content, ...). Leading/trailing whitespace is preserved as
+	 * entities; the middle is wrapped in {@code <nowiki>} so every character is
+	 * literal. Text containing a nowiki marker takes the entity-fallback path, which
+	 * is equally literal and leaves the markup readable for wiki editors.
+	 */
+	public static String wikiParam(String text) {
+		if (text == null || text.isEmpty()) {
+			return "";
+		}
+		int start = 0;
+		int end = text.length();
+		while (start < end && isEdgeWhitespace(text.charAt(start))) {
+			start++;
+		}
+		while (end > start && isEdgeWhitespace(text.charAt(end - 1))) {
+			end--;
+		}
+		StringBuilder out = new StringBuilder();
+		appendEdgeWhitespace(out, text, 0, start);
+		if (end > start) {
+			String mid = text.substring(start, end);
+			if (mid.contains("<nowiki") || mid.contains("</nowiki")) {
+				out.append(escapeAll(mid));
+			} else {
+				out.append("<nowiki>").append(mid).append("</nowiki>");
+			}
+		}
+		appendEdgeWhitespace(out, text, end, text.length());
+		return out.toString();
+	}
+
+	// -------------------------------------------------------------- internal
+
+	private static boolean isEdgeWhitespace(char c) {
+		return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+	}
+
+	private static void appendEdgeWhitespace(StringBuilder out, String text, int from, int to) {
+		for (int i = from; i < to; i++) {
+			switch (text.charAt(i)) {
+				case ' ' -> out.append("&#32;");
+				case '\t' -> out.append("&#9;");
+				default -> out.append("&#10;");
+			}
+		}
+	}
+
+	/** Escapes a tooltip fragment for the minetip format: {@code \&} literal amp, {@code {{!}}} pipe. */
+	private static String escapeTooltip(String text) {
+		return text
+			.replace("\\", "\\\\")
+			.replace("&", "\\&")
+			.replace("|", "{{!}}");
+	}
+
+	/**
+	 * Fallback for text that contains a nowiki marker: per-character entity escaping.
+	 * Entities are decoded only when the HTML is produced, long after the wikitext
+	 * parser has run, so every character renders literally.
+	 */
+	private static String escapeAll(String text) {
+		StringBuilder out = new StringBuilder();
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			switch (c) {
+				case '&' -> out.append("&amp;");
+				case '<' -> out.append("&lt;");
+				case '>' -> out.append("&gt;");
+				case '[' -> out.append("&#91;");
+				case ']' -> out.append("&#93;");
+				case '{' -> out.append("&#123;");
+				case '}' -> out.append("&#125;");
+				case '|' -> out.append("{{!}}");
+				case '\'' -> out.append("&#39;");
+				case '*' -> out.append("&#42;");
+				case '#' -> out.append("&#35;");
+				case '=' -> out.append("&#61;");
+				case ':' -> out.append("&#58;");
+				case ';' -> out.append("&#59;");
+				default -> out.append(c);
+			}
+		}
+		return out.toString();
 	}
 
 	private static String legacyCodes(Style style) {
@@ -180,23 +305,5 @@ public final class ComponentFormatting {
 			return name;
 		}
 		return String.format("#%06x", rgb);
-	}
-
-	/** Escapes text for safe use inside MediaWiki template parameter values. */
-	public static String escapeWikitext(String text) {
-		return text
-			.replace("&", "&amp;")
-			.replace("<", "&lt;")
-			.replace(">", "&gt;")
-			.replace("|", "{{!}}")
-			.replace("{{", "<nowiki>{{</nowiki>")
-			.replace("}}", "<nowiki>}}</nowiki>");
-	}
-
-	/** Escapes text for the minetip tooltip format ({@code \&} literal ampersand). */
-	public static String escapeTooltip(String text) {
-		return text
-			.replace("\\", "\\\\")
-			.replace("&", "\\&");
 	}
 }

@@ -49,6 +49,19 @@ Fabric API dependency.
   on screen (columns=1 = one per row; the wiki's `Module:MC dialog#grid` centers
   a leftover partial row, mirroring the generator's ColumnsGrid).
 
+  **Text is emitted literally.** Every title, message, label and input value is
+  wrapped in `<nowiki>…</nowiki>`, so anything the in-game text contains
+  (`[[…]]`, `{{…}}`, pipes, `*` line starts, headings, `''` …) renders as
+  authored instead of being interpreted as wiki syntax. Because MediaWiki trims
+  whitespace at the very edges of template arguments (a trailing space is eaten
+  before any template sees it), leading/trailing spaces are re-emitted as
+  `&#32;` entities that survive the trim and decode to spaces in the HTML.
+  Text containing its own nowiki marker uses per-character entity escaping
+  (identical rendering, e.g. `&lt;nowiki&gt;`). Tooltip values are never
+  nowiki-wrapped — they live in HTML attributes, where the tags would not be
+  stripped — but keep the minetip `\&` ampersand convention and gain the same
+  `&#32;` edge-space protection.
+
   Every dialog gets `|warning = 1` because the "!" button is always present
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
   (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks),
