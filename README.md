@@ -66,6 +66,9 @@ Fabric API dependency.
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
   (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks,
   literal slashes escaped as `\/`), colors and widths are carried over.
+  Message bodies whose in-game text uses `space.N` translatable spacing
+  components get those components stripped and are emitted with `align=left`
+  (they are structured lists, not centered blurbs).
   Every tooltip description line is emitted with a leading `/` so the description
   always starts on its own line under the title (minetip turns a plain `/` into
   a line break; the wiki's title/description spans are inline by default).

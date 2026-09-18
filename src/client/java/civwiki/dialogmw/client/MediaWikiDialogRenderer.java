@@ -2,9 +2,13 @@ package civwiki.dialogmw.client;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.server.dialog.ActionButton;
 import net.minecraft.server.dialog.CommonButtonData;
@@ -104,10 +108,20 @@ public final class MediaWikiDialogRenderer {
 
 	private static String renderBody(DialogBody body) {
 		if (body instanceof PlainMessage message) {
+			Component contents = message.contents();
+			boolean padded = containsSpaceTranslatable(contents);
+			if (padded) {
+				contents = stripSpaceTranslatables(contents);
+			}
 			StringBuilder sb = new StringBuilder("{{MC dialog/message|1=");
-			sb.append(ComponentFormatting.toWikitext(message.contents()));
+			sb.append(ComponentFormatting.toWikitext(contents));
 			if (message.width() > 0) {
 				sb.append("|width=").append(message.width());
+			}
+			if (padded) {
+				// Messages padded with space.N translatables are structured lists in
+				// game; render them flush-left instead of centered.
+				sb.append("|align=left");
 			}
 			sb.append("}}");
 			return sb.toString();
@@ -120,6 +134,57 @@ public final class MediaWikiDialogRenderer {
 			return sb.toString();
 		}
 		return "";
+	}
+
+	/** Matches translatable keys like {@code space.1}, {@code space.-2} (any signed integer N). */
+	private static final Pattern SPACE_TRANSLATABLE = Pattern.compile("space\\.[+-]?\\d+");
+
+	private static boolean isSpaceTranslatable(Component component) {
+		return component.getContents() instanceof TranslatableContents translation
+			&& SPACE_TRANSLATABLE.matcher(translation.getKey()).matches();
+	}
+
+	/** True when the component subtree contains a {@code space.N} translatable component. */
+	private static boolean containsSpaceTranslatable(Component component) {
+		if (component == null) {
+			return false;
+		}
+		if (isSpaceTranslatable(component)) {
+			return true;
+		}
+		for (Component child : component.getSiblings()) {
+			if (containsSpaceTranslatable(child)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Returns a copy of the subtree with every {@code space.N} translatable removed.
+	 * A removed node's own text is dropped; anything appended to it is hoisted into
+	 * its position so sibling order is kept. Styles are copied per node, so the
+	 * vanilla flattener still merges them exactly like the original tree.
+	 */
+	private static Component stripSpaceTranslatables(Component component) {
+		if (component == null) {
+			return null;
+		}
+		MutableComponent out = isSpaceTranslatable(component)
+			? Component.literal("").withStyle(component.getStyle())
+			: MutableComponent.create(component.getContents()).withStyle(component.getStyle());
+		for (Component child : component.getSiblings()) {
+			if (isSpaceTranslatable(child)) {
+				// Rare: something appended onto a space.N padding node. Keep its
+				// children, hoisted into this position.
+				for (Component grandchild : child.getSiblings()) {
+					out.append(stripSpaceTranslatables(grandchild));
+				}
+			} else {
+				out.append(stripSpaceTranslatables(child));
+			}
+		}
+		return out;
 	}
 
 	/** The wiki convention for the item icon: "minecraft:golden_apple" -> "Golden Apple.png". */
