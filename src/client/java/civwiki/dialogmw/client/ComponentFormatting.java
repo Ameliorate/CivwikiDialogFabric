@@ -128,7 +128,9 @@ public final class ComponentFormatting {
 	 * {@code {{!}}}). Callers split it into lines and run each through {@link #tooltipParam}
 	 * before inserting it into a template argument. The codes are emitted verbatim
 	 * <em>after</em> the per-run escaping, so they stay {@code &x} instead of being
-	 * mangled into {@code \&x} (which minetip would render as literal text).
+	 * mangled into {@code \&x} (which minetip would render as literal text), and are
+	 * re-emitted at the start of every line of a run so multi-line tooltips keep their
+	 * styling once the output is split on newlines.
 	 */
 	public static String toTooltip(Component component) {
 		if (component == null) {
@@ -143,8 +145,26 @@ public final class ComponentFormatting {
 			String codes = legacyCodes(node.getStyle());
 			if (codes.isEmpty()) {
 				out.append(escapeTooltip(text));
-			} else {
-				out.append(codes).append(escapeTooltip(text)).append("&r");
+				continue;
+			}
+			// Re-emit the codes at the start of every line of the run: callers split
+			// on "\n", and a styled run spanning several lines would otherwise lose
+			// its styling on every line after the first.
+			String escaped = escapeTooltip(text);
+			int from = 0;
+			while (true) {
+				int nl = escaped.indexOf('\n', from);
+				if (nl < 0) {
+					if (from < escaped.length()) {
+						out.append(codes).append(escaped, from, escaped.length()).append("&r");
+					}
+					break;
+				}
+				if (from < nl) {
+					out.append(codes).append(escaped, from, nl).append("&r");
+				}
+				out.append('\n');
+				from = nl + 1;
 			}
 		}
 		return out.toString();
