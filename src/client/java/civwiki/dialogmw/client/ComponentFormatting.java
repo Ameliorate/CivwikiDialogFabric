@@ -7,6 +7,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.chat.contents.ObjectContents;
+import net.minecraft.network.chat.contents.objects.AtlasSprite;
+import net.minecraft.network.chat.contents.objects.ObjectInfo;
+import net.minecraft.network.chat.contents.objects.PlayerSprite;
+import net.minecraft.resources.Identifier;
 
 /**
  * Helpers for turning in-game {@link Component}s into the text flavours the wiki
@@ -81,65 +86,92 @@ public final class ComponentFormatting {
 
 	/**
 	 * Renders a component as inline wikitext. Plain runs become literal text,
-	 * styled runs are wrapped in {@code {{MC dialog/text|...}}}; every run goes
-	 * through {@link #wikiParam} so it stays exactly as authored. Runs whose
-	 * style carries a SHOW_TEXT hover event get their hover text appended as
-	 * {@code |tooltip=} / {@code |tooltip_desc=} parameters (the same minetip
-	 * contract as button tooltips).
+	 * styled runs are wrapped in {@code {{MC dialog/text|...}}}; every text run
+	 * goes through {@link #wikiParam} so it stays exactly as authored. Runs
+	 * whose style carries a SHOW_TEXT hover event get their hover text appended
+	 * as {@code |tooltip=} / {@code |tooltip_desc=} parameters (the same
+	 * minetip contract as button tooltips). Object components are emitted as
+	 * raw wiki template calls: atlas sprites as {@code {{ItemSprite|…}}},
+	 * player heads as {@code {{playericon|…}}} (see {@link #objectWikiCall}).
 	 */
 	public static String toWikitext(Component component) {
 		if (component == null) {
 			return "";
 		}
 		StringBuilder out = new StringBuilder();
-		for (Component node : component.toFlatList()) {
-			String text = wikiParam(node.getString());
-			if (text.isEmpty()) {
-				continue;
-			}
-			Style style = node.getStyle();
-			String color = colorName(style);
-			boolean bold = style.isBold();
-			boolean italic = style.isItalic();
-			boolean underlined = style.isUnderlined();
-			boolean strikethrough = style.isStrikethrough();
-			Optional<Component> hover = hoverText(style);
-			if (color == null && !bold && !italic && !underlined && !strikethrough && hover.isEmpty()) {
-				out.append(text);
-				continue;
-			}
-			out.append("{{MC dialog/text|");
-			if (color != null) {
-				out.append("color=").append(color).append('|');
-			}
-			if (bold) {
-				out.append("bold=yes|");
-			}
-			if (italic) {
-				out.append("italic=yes|");
-			}
-			if (underlined) {
-				out.append("underlined=yes|");
-			}
-			if (strikethrough) {
-				out.append("strikethrough=yes|");
-			}
-			boolean tipEmitted = false;
-			if (hover.isPresent()) {
-				String tip = ComponentFormatting.tooltipParams(hover.get());
-				if (tip != null) {
-					out.append(tip);
-					tipEmitted = true;
-				}
-			}
-			// The style block (or the template's opening pipe) always leaves a
-			// separator behind; a tooltip fragment does not, so restore one.
-			if (tipEmitted) {
-				out.append('|');
-			}
-			out.append("1=").append(text).append("}}");
-		}
+		appendWikiRuns(component, Style.EMPTY, out);
 		return out.toString();
+	}
+
+	/**
+	 * Walks the component tree exactly like the vanilla flattener — the same
+	 * {@code style.applyTo(...)} merge chain, per-content text visits, then
+	 * siblings in order — but appends rendered wikitext on the way. Object
+	 * components become raw template calls instead of their {@code \uFFFC}
+	 * placeholder text. Runs are emitted one per content node, identical to
+	 * {@code toFlatList()}'s granularity, so styling is unchanged.
+	 */
+	private static void appendWikiRuns(Component node, Style inherited, StringBuilder out) {
+		Style merged = inherited.applyTo(node.getStyle());
+		if (node.getContents() instanceof ObjectContents object) {
+			out.append(objectWikiCall(object.contents()));
+		} else {
+			node.getContents().visit((Style style, String text) -> {
+				appendTextRun(out, text, style);
+				return Optional.empty();
+			}, merged);
+		}
+		for (Component child : node.getSiblings()) {
+			appendWikiRuns(child, merged, out);
+		}
+	}
+
+	/** Renders one text run: wikiParam'd literal text, or a /text wrapper when styled. */
+	private static void appendTextRun(StringBuilder out, String rawText, Style style) {
+		String text = wikiParam(rawText);
+		if (text.isEmpty()) {
+			return;
+		}
+		String color = colorName(style);
+		boolean bold = style.isBold();
+		boolean italic = style.isItalic();
+		boolean underlined = style.isUnderlined();
+		boolean strikethrough = style.isStrikethrough();
+		Optional<Component> hover = hoverText(style);
+		if (color == null && !bold && !italic && !underlined && !strikethrough && hover.isEmpty()) {
+			out.append(text);
+			return;
+		}
+		out.append("{{MC dialog/text|");
+		if (color != null) {
+			out.append("color=").append(color).append('|');
+		}
+		if (bold) {
+			out.append("bold=yes|");
+		}
+		if (italic) {
+			out.append("italic=yes|");
+		}
+		if (underlined) {
+			out.append("underlined=yes|");
+		}
+		if (strikethrough) {
+			out.append("strikethrough=yes|");
+		}
+		boolean tipEmitted = false;
+		if (hover.isPresent()) {
+			String tip = ComponentFormatting.tooltipParams(hover.get());
+			if (tip != null) {
+				out.append(tip);
+				tipEmitted = true;
+			}
+		}
+		// The style block (or the template's opening pipe) always leaves a
+		// separator behind; a tooltip fragment does not, so restore one.
+		if (tipEmitted) {
+			out.append('|');
+		}
+		out.append("1=").append(text).append("}}");
 	}
 
 	/** The SHOW_TEXT hover component carried by a style, if any. */
@@ -149,6 +181,38 @@ public final class ComponentFormatting {
 			return Optional.ofNullable(showText.value());
 		}
 		return Optional.empty();
+	}
+
+	/**
+	 * Emits the wiki template invocation for an object component: atlas sprites
+	 * as {@code {{ItemSprite|…}}}, player heads as {@code {{playericon|…}}}. A
+	 * player head with no name (e.g. a material-placeholder head generated by
+	 * MaterialSpritesGenerator) falls back to the plain player-head item sprite.
+	 */
+	private static String objectWikiCall(ObjectInfo info) {
+		if (info instanceof AtlasSprite sprite) {
+			return "{{ItemSprite|" + itemSpriteName(sprite.sprite()) + "}}";
+		}
+		if (info instanceof PlayerSprite player) {
+			Optional<String> name = player.player().name();
+			if (name.isPresent() && !name.get().isBlank()) {
+				return "{{playericon|" + name.get() + "}}";
+			}
+			return "{{ItemSprite|player-head}}";
+		}
+		return "";
+	}
+
+	/** {@code minecraft:item/iron_helmet} -> {@code iron-helmet} (wiki ItemSprite id). */
+	private static String itemSpriteName(Identifier sprite) {
+		String path = sprite.getPath();
+		if (path.startsWith("item/")) {
+			path = path.substring("item/".length());
+		} else if (path.startsWith("block/")) {
+			path = path.substring("block/".length());
+		}
+		String id = path.replace('_', '-');
+		return "minecraft".equals(sprite.getNamespace()) ? id : sprite.getNamespace() + ":" + id;
 	}
 
 	/**

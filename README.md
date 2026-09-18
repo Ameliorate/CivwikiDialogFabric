@@ -66,6 +66,10 @@ Fabric API dependency.
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
   (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks,
   literal slashes escaped as `\/`), colors and widths are carried over.
+  Object components in text become raw wiki template calls: atlas sprites as
+  `{{ItemSprite|item-id}}` (e.g. `{{ItemSprite|iron-helmet}}`), player heads as
+  `{{playericon|PlayerName}}`, and nameless material-placeholder heads
+  (MaterialSpritesGenerator-style) as `{{ItemSprite|player-head}}`.
   Message bodies whose in-game text uses `space.N` translatable spacing
   components get those components stripped and are emitted with `align=left`
   (they are structured lists, not centered blurbs).
