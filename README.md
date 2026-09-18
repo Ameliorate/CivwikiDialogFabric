@@ -66,6 +66,9 @@ Fabric API dependency.
   in-game. Body items, inputs (`checkbox`/`slider`/`field`/`choice`), tooltips
   (minetip `&x` codes, `\&` literal ampersands, `/` description line breaks,
   literal slashes escaped as `\/`), colors and widths are carried over.
+  Every tooltip description line is emitted with a leading `/` so the description
+  always starts on its own line under the title (minetip turns a plain `/` into
+  a line break; the wiki's title/description spans are inline by default).
   Styled text runs are emitted as `{{MC dialog/text|...}}`; when a run's style
   carries a SHOW_TEXT hover event, its hover text becomes the same
   `|tooltip=` / `|tooltip_desc=` parameters the wiki's `/text` template now

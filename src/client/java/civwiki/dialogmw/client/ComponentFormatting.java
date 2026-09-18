@@ -155,8 +155,9 @@ public final class ComponentFormatting {
 	 * Builds the {@code tooltip=} / {@code tooltip_desc=} parameter fragment
 	 * (without surrounding pipes) for a hover component (a {@code SHOW_TEXT}
 	 * hover event), returning {@code null} when there is nothing to show. The
-	 * first line becomes the main tooltip text; the rest are joined with the
-	 * wiki's {@code /} description separator, exactly like button tooltips.
+	 * first line becomes the main tooltip text; each remaining line is prefixed
+	 * with the wiki's {@code /} line-break separator, so the description always
+	 * starts on its own line under the tooltip title.
 	 * Callers add their own {@code |} separators, so the fragment is safe to
 	 * splice into any parameter position.
 	 */
@@ -172,10 +173,11 @@ public final class ComponentFormatting {
 		if (lines.length > 1) {
 			StringBuilder rest = new StringBuilder();
 			for (int i = 1; i < lines.length; i++) {
-				if (i > 1) {
-					rest.append('/');
-				}
-				rest.append(tooltipDescParam(lines[i]));
+				// Every description line is prefixed with a '/': minetip renders a
+				// plain '/' as <br>, so the first description line moves onto its
+				// own line below the tooltip title instead of gluing onto it (the
+				// wiki's title/description spans are inline by default).
+				rest.append('/').append(tooltipDescParam(lines[i]));
 			}
 			if (!rest.isEmpty()) {
 				if (!out.isEmpty()) {
